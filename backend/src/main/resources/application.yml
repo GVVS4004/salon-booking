@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: salon-booking
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/salon}
+    username: ${DB_USERNAME:salon}
+    password: ${DB_PASSWORD:salon}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+
+server:
+  # Hosts like Render/Railway inject the port to listen on via $PORT.
+  port: ${PORT:8080}
+
+# --- Application-specific configuration ---
+salon:
+  # Business/slot settings
+  booking:
+    slot-interval-minutes: 15
+    # How many days into the future customers may book
+    max-advance-days: 60
+    # Salon's local timezone. Business hours are interpreted in this zone.
+    timezone: ${SALON_TIMEZONE:Asia/Kolkata}
+
+  # Auth
+  auth:
+    # HS256 secret for app-issued JWTs. MUST be overridden in production (>= 32 chars).
+    jwt-secret: ${JWT_SECRET:change-me-in-production-please-use-a-long-random-secret}
+    jwt-ttl-minutes: ${JWT_TTL_MINUTES:720}
+    # Single admin account (see plan). Override in production.
+    admin-email: ${ADMIN_EMAIL:admin@salon.local}
+    admin-password: ${ADMIN_PASSWORD:admin123}
+
+  # Google Sign-In. Leave client-id blank to disable Google login (guest fallback still works).
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+
+  # Notifications
+  notifications:
+    # console = log only (default, no SMTP needed); email = send via configured SMTP
+    mode: ${NOTIFICATIONS_MODE:console}
+    from: ${NOTIFICATIONS_FROM:no-reply@salon.local}
+    # Reminder sweep: notify for appointments starting within this many hours
+    reminder-lead-hours: 24
+
+  # CORS: allowed origins for the frontend SPA
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+logging:
+  level:
+    com.salon.booking: INFO

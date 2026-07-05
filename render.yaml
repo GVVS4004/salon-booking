@@ -1,0 +1,33 @@
+# Render Blueprint for the Spring Boot backend.
+# In Render: New > Blueprint > point at this repo. Fill the `sync: false` values in the dashboard.
+# (Frontend is deployed separately on Vercel; database is Neon.)
+services:
+  - type: web
+    name: salon-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/services
+    envVars:
+      # --- Neon Postgres (paste JDBC URL incl. ?sslmode=require, plus user/password) ---
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # --- Auth ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      # --- The Vercel frontend origin, e.g. https://salon.vercel.app ---
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: SALON_TIMEZONE
+        value: Asia/Kolkata
