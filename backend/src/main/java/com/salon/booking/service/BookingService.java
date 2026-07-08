@@ -25,8 +25,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class BookingService {
@@ -38,7 +36,7 @@ public class BookingService {
     private final ServiceOfferingRepository serviceRepo;
     private final AvailabilityService availabilityService;
     private final CustomerService customerService;
-    private final NotificationService notifications;
+    private final OutboxService outbox;
     private final ZoneId zone;
 
     public BookingService(AppointmentRepository appointments,
@@ -46,14 +44,14 @@ public class BookingService {
                           ServiceOfferingRepository serviceRepo,
                           AvailabilityService availabilityService,
                           CustomerService customerService,
-                          NotificationService notifications,
+                          OutboxService outbox,
                           SalonProperties props) {
         this.appointments = appointments;
         this.staffRepo = staffRepo;
         this.serviceRepo = serviceRepo;
         this.availabilityService = availabilityService;
         this.customerService = customerService;
-        this.notifications = notifications;
+        this.outbox = outbox;
         this.zone = ZoneId.of(props.getBooking().getTimezone());
     }
 
@@ -112,7 +110,8 @@ public class BookingService {
             throw new ConflictException("That time slot was just taken. Please pick another.");
         }
 
-        sendAfterCommit(() -> notifications.sendBookingConfirmation(appt));
+        // Persist the confirmation in this same transaction; the dispatcher delivers it.
+        outbox.enqueue(NotificationMessages.confirmation(appt, zone));
         return Mapper.toDto(appt);
     }
 
@@ -130,7 +129,7 @@ public class BookingService {
 
         appt.setStatus(AppointmentStatus.CANCELLED);
         appointments.saveAndFlush(appt);
-        sendAfterCommit(() -> notifications.sendCancellation(appt));
+        outbox.enqueue(NotificationMessages.cancellation(appt, zone));
         return Mapper.toDto(appt);
     }
 
@@ -141,7 +140,7 @@ public class BookingService {
         appt.setStatus(status);
         appointments.saveAndFlush(appt);
         if (status == AppointmentStatus.CANCELLED) {
-            sendAfterCommit(() -> notifications.sendCancellation(appt));
+            outbox.enqueue(NotificationMessages.cancellation(appt, zone));
         }
         return Mapper.toDto(appt);
     }
@@ -166,23 +165,5 @@ public class BookingService {
                 ? appointments.findByStaffIdAndStartTimeBetweenOrderByStartTime(staffId, from, to)
                 : appointments.findByStartTimeBetweenOrderByStartTime(from, to);
         return found.stream().map(Mapper::toDto).toList();
-    }
-
-    /** Runs the action after the current transaction commits (so notifications aren't sent on rollback). */
-    private void sendAfterCommit(Runnable action) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        action.run();
-                    } catch (Exception e) {
-                        log.error("Notification failed after commit: {}", e.getMessage());
-                    }
-                }
-            });
-        } else {
-            action.run();
-        }
     }
 }

@@ -6,7 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /** Builds the subject/body text for customer notifications. */
-final class NotificationMessages {
+public final class NotificationMessages {
 
     private static final DateTimeFormatter WHEN =
             DateTimeFormatter.ofPattern("EEE d MMM yyyy 'at' h:mm a", Locale.ENGLISH);
@@ -14,10 +14,11 @@ final class NotificationMessages {
     private NotificationMessages() {
     }
 
-    record Message(String to, String subject, String body) {
+    /** An immutable, ready-to-send message — decoupled from JPA entities so it can be sent async. */
+    public record Message(String to, String subject, String body) {
     }
 
-    static Message confirmation(Appointment a, ZoneId zone) {
+    public static Message confirmation(Appointment a, ZoneId zone) {
         String when = a.getStartTime().atZoneSameInstant(zone).format(WHEN);
         String subject = "Your booking is confirmed - " + a.getService().getName();
         String body = """
@@ -40,7 +41,7 @@ final class NotificationMessages {
         return new Message(a.getCustomer().getEmail(), subject, body);
     }
 
-    static Message cancellation(Appointment a, ZoneId zone) {
+    public static Message cancellation(Appointment a, ZoneId zone) {
         String when = a.getStartTime().atZoneSameInstant(zone).format(WHEN);
         String subject = "Your booking was cancelled - " + a.getService().getName();
         String body = """
@@ -57,7 +58,7 @@ final class NotificationMessages {
         return new Message(a.getCustomer().getEmail(), subject, body);
     }
 
-    static Message reminder(Appointment a, ZoneId zone) {
+    public static Message reminder(Appointment a, ZoneId zone) {
         String when = a.getStartTime().atZoneSameInstant(zone).format(WHEN);
         String subject = "Reminder: upcoming appointment - " + a.getService().getName();
         String body = """

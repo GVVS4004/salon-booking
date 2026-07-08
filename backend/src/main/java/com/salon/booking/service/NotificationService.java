@@ -1,16 +1,11 @@
 package com.salon.booking.service;
 
-import com.salon.booking.domain.Appointment;
-
 /**
- * Sends transactional notifications to customers. Implementations are selected by the
- * {@code salon.notifications.mode} property (console vs email).
+ * Delivers a pre-built notification to the customer. Implementations are selected by the
+ * {@code salon.notifications.mode} property (console vs email) and run asynchronously, so
+ * delivery latency or failure never blocks or breaks the booking request.
  */
 public interface NotificationService {
 
-    void sendBookingConfirmation(Appointment appointment);
-
-    void sendCancellation(Appointment appointment);
-
-    void sendReminder(Appointment appointment);
+    void send(NotificationMessages.Message message);
 }
